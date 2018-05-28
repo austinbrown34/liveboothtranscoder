@@ -87,7 +87,16 @@ def transcode(url):
         os.remove('/tmp/{}'.format('output.mp4'))
     except OSError:
         pass
-    subprocess.call(['ffmpeg', '-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c', 'copy', '/tmp/output.mp4'])
+    mbs = os.path.getsize('/tmp/video.mp4')/(1024*1024.0)
+    iterations = round(20/mbs)
+    try:
+        os.remove('/tmp/{}'.format('list.txt'))
+    except OSError:
+        pass
+    with open('/tmp/list.txt', 'w') as f:
+        for i in range(iterations):
+            f.write("file '/tmp/video.mp4'\n")
+    subprocess.call(['ffmpeg', '-f', 'concat', '-safe', '0', '-i', '/tmp/list.txt', '-c', 'copy', '/tmp/output.mp4'])
     session = boto3.Session()
     s3 = session.resource('s3')
     filename = 'converted/{}.mp4'.format(uuid.uuid4().hex)
