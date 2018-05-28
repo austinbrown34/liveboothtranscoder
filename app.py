@@ -88,7 +88,7 @@ def transcode(url):
     except OSError:
         pass
     mbs = os.path.getsize('/tmp/video.mp4')/(1024*1024.0)
-    iterations = round(20/mbs)
+    iterations = round(10/mbs)
     try:
         os.remove('/tmp/{}'.format('list.txt'))
     except OSError:
