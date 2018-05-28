@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, make_response, request, abort
+from flask import Flask, jsonify, make_response, request, abort, Response
 import subprocess
 import os
 import boto3
@@ -6,6 +6,7 @@ import botocore
 import uuid
 import requests
 from flask_mail import Mail, Message
+import json
 from zappa.async import task
 
 
@@ -21,22 +22,32 @@ app.config.update(
 mail = Mail(app)
 
 
+def build_response(resp_dict, status_code):
+    response = Response(json.dumps(resp_dict), status_code)
+    return response
+
+
 @task
 def mail_video(email, url, filepath):
-    msg = Message('Your Social Shareable GIF',
-                  sender="team@livebooth.xyz",
-                  recipients=[email])
+    with app.app_context():
+        print("about to mail")
+        msg = Message('Your Social Shareable GIF',
+                      sender="team@livebooth.xyz",
+                      recipients=[email])
 
-    file_type = 'video/mp4'
-    msg.body = 'Download and use this version of the GIF to post to your Social Networks!'
-    # msg.html = data['body'] + ' <a href="' + data['url'] + '">' + data['url'] + '</a>'
-    # r = requests.get(data['url'], allow_redirects=True)
-    # with open(os.path.join('/tmp', name), 'wb') as imagefile:
-    #     imagefile.write(r.content)
-    with app.open_resource(filepath) as fp:
-        msg.attach('socialgif.mp4', file_type, fp.read())
+        file_type = 'video/mp4'
+        msg.body = 'Download and use this version of the GIF to post to your Social Networks!'
+        # msg.html = data['body'] + ' <a href="' + data['url'] + '">' + data['url'] + '</a>'
+        # r = requests.get(data['url'], allow_redirects=True)
+        # with open(os.path.join('/tmp', name), 'wb') as imagefile:
+        #     imagefile.write(r.content)
+        print("about to attach")
+        with app.open_resource(filepath) as fp:
+            msg.attach('socialgif.mp4', file_type, fp.read())
 
-    mail.send(msg)
+        print("about to send")
+        print(os.environ.get('MAIL_PASSWORD'))
+        mail.send(msg)
 
 
 def transcode(url):
@@ -56,6 +67,10 @@ def transcode(url):
     s3 = boto3.resource('s3')
 
     try:
+        try:
+            os.remove('/tmp/{}'.format('giphy.gif'))
+        except OSError:
+            pass
         s3.Bucket('livebooth').download_file(url, '/tmp/giphy.gif')
     except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == "404":
@@ -63,7 +78,15 @@ def transcode(url):
         else:
             raise
     # open('/tmp/giphy.gif', 'wb').write(r.content)
+    try:
+        os.remove('/tmp/{}'.format('video.mp4'))
+    except OSError:
+        pass
     subprocess.call(['ffmpeg',  '-i', '/tmp/giphy.gif',  '-movflags', 'faststart', '-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '/tmp/video.mp4'])
+    try:
+        os.remove('/tmp/{}'.format('output.mp4'))
+    except OSError:
+        pass
     subprocess.call(['ffmpeg', '-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c', 'copy', '/tmp/output.mp4'])
     session = boto3.Session()
     s3 = session.resource('s3')
@@ -80,8 +103,9 @@ def transcode(url):
 
 @task
 def convert_and_send(data):
-    conversion = transcode(data['url'])
-    mail_video(data['email'], conversion['url'], conversion['file'])
+    with app.app_context():
+        conversion = transcode(data['url'])
+        mail_video(data['email'], conversion['url'], conversion['file'])
 
 
 @app.errorhandler(404)
@@ -100,13 +124,12 @@ def convert():
         abort(400)
     print(request.json)
     data = request.json
-    with app.app_context():
-        convert_and_send(data)
+
+    convert_and_send(data)
     # thread = Thread(target=convert_and_send, args=[data])
     # thread.start()
 
-
-    return jsonify(data)
+    return build_response({"status": "success"}, 200)
 
 
 if __name__ == '__main__':
