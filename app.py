@@ -8,6 +8,9 @@ import requests
 from flask_mail import Mail, Message
 import json
 from zappa.async import task
+import sendgrid
+from sendgrid.helpers.mail import *
+import base64
 
 
 app = Flask(__name__)
@@ -20,6 +23,20 @@ app.config.update(
     MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD')
     )
 mail = Mail(app)
+
+
+def build_attachment1(filepath):
+    """Build attachment mock."""
+    attachment = Attachment()
+    with open(filepath, "rb") as f:
+        encodedMp4 = base64.b64encode(f.read())
+        print(encodedMp4.decode())
+        attachment.content = (encodedMp4.decode())
+        attachment.type = "video/mp4"
+        attachment.filename = "socialgif.mp4"
+        attachment.disposition = "attachment"
+        attachment.content_id = "Social GIF"
+    return attachment
 
 
 def build_response(resp_dict, status_code):
@@ -42,12 +59,24 @@ def mail_video(email, url, filepath):
         # with open(os.path.join('/tmp', name), 'wb') as imagefile:
         #     imagefile.write(r.content)
         print("about to attach")
-        with app.open_resource(filepath) as fp:
-            msg.attach('socialgif.mp4', file_type, fp.read())
+        # with app.open_resource(filepath) as fp:
+        #     msg.attach('socialgif.mp4', file_type, fp.read())
 
         print("about to send")
         print(os.environ.get('MAIL_PASSWORD'))
-        mail.send(msg)
+
+        sg = sendgrid.SendGridAPIClient(apikey=os.environ.get('SENDGRID_API_KEY'))
+        from_email = Email("team@livebooth.xyz")
+        to_email = Email(email)
+        subject = 'Your Social Shareable GIF'
+        content = Content("text/plain", msg.body)
+        mail = Mail(from_email, subject, to_email, content)
+        mail.add_attachment(build_attachment1(filepath))
+        response = sg.client.mail.send.post(request_body=mail.get())
+        print(response.status_code)
+        print(response.body)
+        print(response.headers)
+        # mail.send(msg)
 
 
 def transcode(url):

@@ -32,10 +32,12 @@ placebo==0.8.1
 pycparser==2.18
 pyOpenSSL==18.0.0
 python-dateutil==2.6.1
+python-http-client==3.1.0
 python-slugify==1.2.4
 PyYAML==3.12
 requests==2.18.4
 s3transfer==0.1.13
+sendgrid==5.3.0
 six==1.11.0
 toml==0.9.4
 tqdm==4.19.1
