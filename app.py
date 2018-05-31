@@ -8,20 +8,44 @@ import requests
 from flask_mail import Mail, Message
 import json
 from zappa.async import task
-import sendgrid
-from sendgrid.helpers.mail import *
+# import sendgrid
+# from sendgrid.helpers.mail import *
 import base64
 
 
 app = Flask(__name__)
 app.config.update(
-    MAIL_SERVER='smtp.mailgun.com',
+    MAIL_SERVER='email-smtp.us-west-2.amazonaws.com',
     MAIL_USE_TLS=True,
     MAIL_PORT=587,
     MAIL_USE_SSL=False,
-    MAIL_USERNAME='postmaster@mail.livebooth.xyz',
-    MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD')
+    MAIL_USERNAME='AKIAIV7T2MQPB7WWRUSQ',
+    MAIL_PASSWORD= os.environ.get('SES_MAIL_PASSWORD')
     )
+# app.config.update(
+#     MAIL_SERVER='smtp.mailgun.com',
+#     MAIL_USE_TLS=True,
+#     MAIL_PORT=587,
+#     MAIL_USE_SSL=False,
+#     MAIL_USERNAME='postmaster@mail.livebooth.xyz',
+#     MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD')
+#     )
+# app.config.update(
+#     MAIL_SERVER='smtp.mailgun.com',
+#     MAIL_USE_TLS=True,
+#     MAIL_PORT=587,
+#     MAIL_USE_SSL=False,
+#     MAIL_USERNAME='postmaster@livebooth.xyz',
+#     MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD2')
+#     )
+# app.config.update(
+#     MAIL_SERVER='mail.smtp2go.com',
+#     MAIL_USE_TLS=True,
+#     MAIL_PORT=2525,
+#     MAIL_USE_SSL=False,
+#     MAIL_USERNAME='austinbrown34@gmail.com',
+#     MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD3')
+#     )
 mail = Mail(app)
 
 
@@ -59,24 +83,24 @@ def mail_video(email, url, filepath):
         # with open(os.path.join('/tmp', name), 'wb') as imagefile:
         #     imagefile.write(r.content)
         print("about to attach")
-        # with app.open_resource(filepath) as fp:
-        #     msg.attach('socialgif.mp4', file_type, fp.read())
+        with app.open_resource(filepath) as fp:
+            msg.attach('socialgif.mp4', file_type, fp.read())
 
         print("about to send")
-        print(os.environ.get('MAIL_PASSWORD'))
+        # print(os.environ.get('MAIL_PASSWORD'))
 
-        sg = sendgrid.SendGridAPIClient(apikey=os.environ.get('SENDGRID_API_KEY'))
-        from_email = Email("team@livebooth.xyz")
-        to_email = Email(email)
-        subject = 'Your Social Shareable GIF'
-        content = Content("text/plain", msg.body)
-        mail = Mail(from_email, subject, to_email, content)
-        mail.add_attachment(build_attachment1(filepath))
-        response = sg.client.mail.send.post(request_body=mail.get())
-        print(response.status_code)
-        print(response.body)
-        print(response.headers)
-        # mail.send(msg)
+        # sg = sendgrid.SendGridAPIClient(apikey=os.environ.get('SENDGRID_API_KEY'))
+        # from_email = Email("team@livebooth.xyz")
+        # to_email = Email(email)
+        # subject = 'Your Social Shareable GIF'
+        # content = Content("text/plain", msg.body)
+        # mail = Mail(from_email, subject, to_email, content)
+        # mail.add_attachment(build_attachment1(filepath))
+        # response = sg.client.mail.send.post(request_body=mail.get())
+        # print(response.status_code)
+        # print(response.body)
+        # print(response.headers)
+        mail.send(msg)
 
 
 def transcode(url):
@@ -117,7 +141,7 @@ def transcode(url):
     except OSError:
         pass
     mbs = os.path.getsize('/tmp/video.mp4')/(1024*1024.0)
-    iterations = round(10/mbs)
+    iterations = round(7/mbs)
     try:
         os.remove('/tmp/{}'.format('list.txt'))
     except OSError:
@@ -153,6 +177,41 @@ def not_found(error):
 
 @app.route('/')
 def transcoder():
+    return "Live Booth Transcoder"
+
+
+@app.route('/test')
+def test():
+    print("about to mail")
+    msg = Message('Your Social Shareable GIF',
+                  sender="team@livebooth.xyz",
+                  recipients=['austinbrown34@hotmail.com'])
+
+    file_type = 'video/mp4'
+    msg.body = 'Download and use this version of the GIF to post to your Social Networks!'
+    # msg.html = data['body'] + ' <a href="' + data['url'] + '">' + data['url'] + '</a>'
+    # r = requests.get(data['url'], allow_redirects=True)
+    # with open(os.path.join('/tmp', name), 'wb') as imagefile:
+    #     imagefile.write(r.content)
+    print("about to attach")
+    # with app.open_resource(filepath) as fp:
+    #     msg.attach('socialgif.mp4', file_type, fp.read())
+
+    print("about to send")
+    # print(os.environ.get('MAIL_PASSWORD'))
+
+    # sg = sendgrid.SendGridAPIClient(apikey=os.environ.get('SENDGRID_API_KEY'))
+    # from_email = Email("team@livebooth.xyz")
+    # to_email = Email(email)
+    # subject = 'Your Social Shareable GIF'
+    # content = Content("text/plain", msg.body)
+    # mail = Mail(from_email, subject, to_email, content)
+    # mail.add_attachment(build_attachment1(filepath))
+    # response = sg.client.mail.send.post(request_body=mail.get())
+    # print(response.status_code)
+    # print(response.body)
+    # print(response.headers)
+    mail.send(msg)
     return "Live Booth Transcoder"
 
 
